@@ -13,7 +13,7 @@
 CC=gcc
 CFLAGS=-g -O2  -fPIC -DPIC  -Wall -Wmissing-prototypes 
 
-YACC=yacc
+YACC=bison
 LEX=flex
 
 # Standalone LWGEOM objects
@@ -56,20 +56,22 @@ liblwgeom.a: $(SA_OBJS) $(SA_HEADERS)
 clean:
 	rm -f $(SA_OBJS) 
 	rm -f liblwgeom.a 
+	rm -f wktparse.tab.c wktparse.tab.h y.tab.c y.tab.h lex.yy.c 
 
 check: liblwgeom.a
 	make -C cunit check
 
 # Command to build each of the .o files
-$(SA_OBJS): %.o: %.c 
+$(SA_OBJS): %.o: %.c wktparse.tab.c wktparse.lex 
 	$(CC) $(CFLAGS) -c -o $@ $<
 
 # Commands to generate the lexer and parser from input files
+wktparse.tab.h \
 wktparse.tab.c: wktparse.y
 	$(YACC) -vd -p lwg_parse_yy wktparse.y
-	mv -f y.tab.c wktparse.tab.c
-	mv -f y.tab.h wktparse.tab.h
+#	mv -f yy.tab.c wktparse.tab.c
+#	mv -f yy.tab.h wktparse.tab.h
  
-lex.yy.c: wktparse.lex wktparse.tab.c
+lex.yy.c: wktparse.lex wktparse.tab.c wktparse.tab.h
 	$(LEX) -Plwg_parse_yy -i -f -o'lex.yy.c' wktparse.lex
  
