@@ -19,6 +19,7 @@ SHP2SQLITE=shp2sqlite
 LIBLWGEOM=../liblwgeom/liblwgeom.a
 
 # iconv flags
+# Set this to -liconv if your libc does not define iconv_open 
 ICONV_LDFLAGS=-lc
 
 all: $(SHP2SQLITE)
@@ -28,7 +29,7 @@ $(LIBLWGEOM):
 
 $(SHP2SQLITE): shpopen.o dbfopen.o getopt.o shp2sqlite.o $(LIBLWGEOM)
 
-	$(CC) -L/usr/local/libiconv/lib/ -liconv -I/usr/include $(CFLAGS) $^ $(ICONV_LDFLAGS) -lm -o $@
+	$(CC) -I/usr/include $(CFLAGS) $^ $(ICONV_LDFLAGS) -lm -o $@
 
 install: all
 	@cp $(SHP2SQLITE) ../../build/
