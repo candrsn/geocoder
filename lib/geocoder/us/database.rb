@@ -280,6 +280,13 @@ module Geocoder::US
       execute "ATTACH DATABASE ':memory:' as #{temp_db};"
       begin
         # flush_statements # the CREATE/DROP TABLE invalidates prepared statements
+        # limit placeholders to 999 (2 * 496) change this limit
+        # Change this limit using sqlite3_limit() SQLITE_LIMIT_VARIABLE_NUMBER
+        # The default value is 999.
+        max_placeholders = 496
+        $stderr.print "triming FID list to #{max_placeholders} from #{fids.count}\n" if @debug and fids.count > max_placeholders
+        fids = fids.slice(1,max_placeholders) if fids.count > max_placeholders
+
         in_list = placeholders_for fids
         sql = "
           CREATE TABLE #{temp_db}.#{temp_table} AS
@@ -521,16 +528,16 @@ module Geocoder::US
 	# | 1 byte Type | 4 byte SRID | 4 byte element count| 8 byte double coordinates *
 	# I've added new code to read this, and commented out the old.
 	info = geom.unpack('CVVD*')
-	coords = info.slice(3, info.length)
-	points << [coords.shift, coords.shift] until coords.empty?
+#	coords = info.slice(3, info.length)
+#	points << [coords.shift, coords.shift] until coords.empty?
 
-      #  coords = geom.unpack "V*" # little-endian 4-byte long ints
+        coords = geom.unpack "V*" # little-endian 4-byte long ints
       #
       ## now map them into signed floats
-      #  coords.map! {|i| ( i > (1 << 31) ? i - (1 << 32) : i ) / 1_000_000.0}
-      #  points << [coords.shift, coords.shift] until coords.empty?
+        coords.map! {|i| ( i > (1 << 31) ? i - (1 << 32) : i ) / 1_000_000.0}
+        points << [coords.shift, coords.shift] until coords.empty?
       end
-      points
+      return points
     end
 
     # Calculate the longitude scaling for the average of two latitudes.
@@ -733,14 +740,16 @@ module Geocoder::US
       end
       candidates.map {|record|
         dist = interpolation_distance record
+        #pp(record)
         points = unpack_geometry record[:geometry]
         side = (record[:side] == "R" ? 1 : -1)
-        if record[:flipped]
+        if ! record[:flipped]
           side *= -1
           points.reverse!
         end
         $stderr.print "DIST: #{dist} FLIPPED: #{record[:flipped]} SIDE: #{side}\n" if @debug
         found = interpolate points, dist, side
+        #pp(found)
         record[:lon], record[:lat] = found.map {|x| format("%.6f", x).to_f}
       }
       
